@@ -7,7 +7,9 @@ pygame.init()
 # Game constants
 CELL_SIZE = 30
 COLS, ROWS = 10, 20
+PREVIEW_WIDTH = 6 * CELL_SIZE  # Extra width for next piece preview and score
 WIDTH, HEIGHT = CELL_SIZE * COLS, CELL_SIZE * ROWS
+SCREEN_WIDTH = WIDTH + PREVIEW_WIDTH
 FPS = 60
 BOUJEE_BG = (24, 24, 36)  # Elegant dark background
 
@@ -116,7 +118,7 @@ def draw_boujee_overlay(surface):
     surface.blit(overlay, (0, 0))
 
 def main():
-    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    screen = pygame.display.set_mode((SCREEN_WIDTH, HEIGHT))
     pygame.display.set_caption("Boujee Tetris")
     clock = pygame.time.Clock()
     fall_time = 0
@@ -206,3 +208,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    #ferfdv

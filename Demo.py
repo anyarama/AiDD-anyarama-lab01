@@ -15,5 +15,4 @@ def is_prime(n):
 # This code will test the above function
 print(is_prime(11))  # Expected output: True
 print(is_prime(4))   # Expected output: False
-
-# 
+ 
