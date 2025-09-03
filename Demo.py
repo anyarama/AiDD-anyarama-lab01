@@ -58,7 +58,6 @@ print("   * * *")
 print("  * * * *")
 print(" * * * * *")
 # the pseudocode below is the second half of the pattern.
-print(" * * * * *")
 print("  * * * *")
 print("   * * *")
 print("    * *")
