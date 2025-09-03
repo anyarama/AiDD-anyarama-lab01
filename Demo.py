@@ -167,6 +167,7 @@ except ValueError as e:
     print("Error:", e)
 
 
+#Reflections
 '''
 For problem 1: Palindrome Checker
 
