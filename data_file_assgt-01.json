@@ -1,0 +1,108 @@
+{
+  "books": [
+    {
+      "bookId": "1",
+      "title": "The Quantum Garden",
+      "aiMetric": "88",
+      "releaseYear": "2023",
+      "author": "Alice Johnson",
+      "genres": [
+        "Science Fiction",
+        "Thriller"
+      ],
+      "publisher": {
+        "publisherName": "Bright Future Press",
+        "location": "USA"
+      },
+      "pages": 420,
+      "sales": [
+        50000,
+        60000,
+        72000
+      ]
+    },
+    {
+      "bookId": "2",
+      "title": "The Forgotten Code",
+      "aiMetric": "42",
+      "releaseYear": "2024",
+      "author": "Devon Chen",
+      "genres": [
+        "Mystery",
+        "Techno-thriller"
+      ],
+      "publisher": {
+        "publisherName": "Redwood House",
+        "location": "UK"
+      },
+      "pages": 310,
+      "sales": [
+        20000,
+        25000,
+        30000
+      ]
+    },
+    {
+      "bookId": "3",
+      "title": "Dreaming in Algorithms",
+      "aiMetric": "65",
+      "releaseYear": "2023",
+      "author": "Sofia Martinez",
+      "genres": [
+        "Non-fiction",
+        "Technology"
+      ],
+      "publisher": {
+        "publisherName": "AI4Books",
+        "location": "Canada"
+      },
+      "pages": 280,
+      "sales": [
+        15000,
+        18000,
+        19000
+      ]
+    },
+    {
+      "bookId": "4",
+      "title": "Notes from Underground",
+      "aiMetric": "79",
+      "releaseYear": "1923",
+      "author": "Fyodor",
+      "genres": [
+        "fiction"
+      ],
+      "publisher": {
+        "publisherName": "penguin",
+        "location": "Russia"
+      },
+      "pages": 249,
+      "sales": [
+        120000
+      ]
+    }
+  ],
+  "reviews": [
+    {
+      "reviewId": "1",
+      "reviewAuthor": "Jane Developer",
+      "reviewDate": "2024-05-12",
+      "reviewText": "Fascinating mix of science and thriller, but the AI-generated dialogue felt awkward.",
+      "bookId": "1"
+    },
+    {
+      "reviewId": "2",
+      "reviewAuthor": "Mark Tester",
+      "reviewDate": "2024-06-07",
+      "reviewText": "The Forgotten Code was suspenseful but leaned too much on technical jargon.",
+      "bookId": "2"
+    },
+    {
+      "reviewId": "3",
+      "reviewAuthor": "Emily Engineer",
+      "reviewDate": "2024-07-01",
+      "reviewText": "Dreaming in Algorithms gave me new insights into how AI impacts creativity.",
+      "bookId": "3"
+    }
+  ]
+}
