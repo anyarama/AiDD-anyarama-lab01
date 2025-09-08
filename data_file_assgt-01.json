@@ -80,6 +80,24 @@
       "sales": [
         120000
       ]
+    },
+    {
+      "bookId": "5",
+      "title": "Pride & Prejudice",
+      "aiMetric": "45",
+      "releaseYear": "1876",
+      "author": "Shelby",
+      "genres": [
+        "Classic"
+      ],
+      "publisher": {
+        "publisherName": "Penguin",
+        "location": "Russia"
+      },
+      "pages": 456,
+      "sales": [
+        10000
+      ]
     }
   ],
   "reviews": [
