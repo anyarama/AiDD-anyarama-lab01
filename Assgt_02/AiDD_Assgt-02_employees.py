@@ -27,11 +27,19 @@ from datetime import date
 CURRENT_YEAR = date.today().year
 
 
-# Project represents a unique project with a single source of truth for revenue.
-# Each unique project has exactly one revenue value in the system.
+# ===========================================================================================
+# Prompt to Copilot: Create a lightweight Project value-object with validation
+# Goals:
+#   - Define a frozen dataclass Project(name: str, revenue: float)
+#   - Validate that name is non-empty and revenue is non-negative in __post_init__
+#   - Implement __str__ to show a friendly representation "Project(name=..., revenue=...)".
+# Constraints:
+#   - Use @dataclass(frozen=True) so instances are immutable
+#   - Keep logic minimal; heavy aggregates belong to ProjectRegistry
+# ===========================================================================================
 @dataclass(frozen=True)
 class Project:
-    # Project name (unique key, normalized by registry) and revenue (non-negative)
+    """Value object representing a unique project and its revenue."""
     name: str
     revenue: float
 
@@ -45,21 +53,32 @@ class Project:
         return f"Project(name={self.name}, revenue={self.revenue:,.2f})"
 
 
+# ===========================================================================================
+# Prompt to Copilot: Build ProjectRegistry to deduplicate projects and track GMs
+# Goals:
+#   - Maintain a dict of unique Project objects keyed by normalized name
+#   - Expose upsert_project(name, revenue) with first-write-wins policy
+#   - Provide get_project(name), total_revenue (sum of all unique), gm_count
+#   - Track registered General Managers via register_gm(gm)
+# Constraints:
+#   - Normalize names via helper _key(name) -> lower/strip
+#   - No global mutable state; this object is the single source of truth
+# ===========================================================================================
 class ProjectRegistry:
-    # ProjectRegistry maintains a de-duplicated catalog of projects and tracks GM registrations.
-    # Why: We must sum revenue across ALL UNIQUE projects (avoid double counting), and we need the GM count
-    # to split the 3% pool fairly across all General Managers.
+    """Central registry for unique projects and GM tracking."""
     def __init__(self) -> None:
         self._projects: Dict[str, Project] = {}
         self._general_managers: List["GeneralManager"] = []
 
     @staticmethod
     def _key(name: str) -> str:
-        # Normalize project name to ensure uniqueness
         return name.strip().lower()
 
     def upsert_project(self, name: str, revenue: float) -> Project:
-        # First-write-wins: if a project name already exists, return the existing project (ignore new revenue).
+        """
+        Insert-or-return an existing project by normalized name.
+        First-write-wins for revenue (documented assumption).
+        """
         k = self._key(name)
         if k in self._projects:
             return self._projects[k]
@@ -68,32 +87,40 @@ class ProjectRegistry:
         return proj
 
     def get_project(self, name: str) -> Optional[Project]:
-        # Fetch by name (case-insensitive). Returns None if not found.
+        """Return project by case-insensitive name, or None if absent."""
         return self._projects.get(self._key(name))
 
     def register_gm(self, gm: "GeneralManager") -> None:
-        # Track General Managers so the 3% pool can be divided equally among all GMs.
+        """Record GM for pool-splitting logic."""
         if gm not in self._general_managers:
             self._general_managers.append(gm)
 
     @property
     def total_revenue(self) -> float:
-        # Sum of revenue across all UNIQUE projects
+        """Aggregate revenue across all unique projects."""
         return sum(p.revenue for p in self._projects.values())
 
     @property
     def gm_count(self) -> int:
-        # Number of registered GMs; defensive code will treat 0 as 1 when splitting the pool.
+        """Number of registered General Managers."""
         return len(self._general_managers)
 
 
+# ===========================================================================================
+# Prompt to Copilot: Create the Parent Employee Class
+# Based on the comments I provided, create the Employee parent class. It should:
+#   - Import the datetime module at the top of the file (already done) and define CURRENT_YEAR.
+#   - The __init__ method should accept first_name, last_name, emp_id, phone, and start_year.
+#   - Normalize phone to digits only; validate names/ID are non-empty and start_year <= CURRENT_YEAR.
+#   - Include a placeholder/abstract method calculate_compensation(registry) that child classes must implement.
+#   - Include a placeholder/abstract __str__() method.
+#   - Provide a years_of_service property and a helper compensation_summary(registry) that formats output.
+# Constraints:
+#   - Use ABC and @abstractmethod to enforce subclass overrides.
+# ===========================================================================================
 class Employee(ABC):
-    # Employee is the superclass (parent) that centralizes universal identity + tenure logic.
-    # UNIVERSAL FIELDS: first_name, last_name, emp_id, phone, start_year
-    # SHARED UTILITIES: phone normalization, years_of_service computation
-    # CONTRACT: subclasses MUST implement calculate_compensation(registry) and __str__()
+    """Superclass capturing universal identity/tenure logic and the polymorphic API."""
     def __init__(self, first_name: str, last_name: str, emp_id: str, phone: str, start_year: int) -> None:
-        # Normalize and validate universal attributes
         self.first_name = first_name.strip()
         self.last_name = last_name.strip()
         self.emp_id = emp_id.strip()
@@ -101,6 +128,7 @@ class Employee(ABC):
         if start_year > CURRENT_YEAR:
             raise ValueError("start_year cannot be in the future.")
         self.start_year = int(start_year)
+
         if not self.first_name:
             raise ValueError("first_name cannot be empty.")
         if not self.last_name:
@@ -110,7 +138,7 @@ class Employee(ABC):
 
     @property
     def phone(self) -> str:
-        # Digits-only storage; presentation formatting is an output concern
+        """Digits-only phone; presentation formatting is an output concern."""
         return self._phone
 
     @phone.setter
@@ -119,34 +147,45 @@ class Employee(ABC):
 
     @staticmethod
     def _normalize_phone(v: str) -> str:
-        # Keep only digits for canonical storage
+        """Strip non-digits to keep a canonical phone representation."""
         return "".join(ch for ch in str(v) if ch.isdigit())
 
     @property
     def years_of_service(self) -> int:
-        # Tenure used by Staff compensation rule
+        """Compute tenure used by Staff compensation rule."""
         return max(0, CURRENT_YEAR - self.start_year)
 
     @abstractmethod
     def calculate_compensation(self, registry: ProjectRegistry) -> float:
-        # Each subclass must compute its own total compensation using the shared registry if needed.
+        """
+        Polymorphic contract: subclasses must compute their total compensation
+        using the shared registry where relevant.
+        """
         ...
 
     @abstractmethod
     def __str__(self) -> str:
-        # Each subclass should provide a clean string for inclusion in reports.
+        """Polymorphic display for reports."""
         ...
 
     def compensation_summary(self, registry: ProjectRegistry) -> str:
-        # Convenience method so the "print total compensation" can live in the class hierarchy.
+        """Uniform printable string for compensation reports."""
         total = self.calculate_compensation(registry)
         return f"{self} | Total Compensation: ${total:,.2f}"
 
 
+# ===========================================================================================
+# Prompt to Copilot: Implement GeneralManager subclass
+# Goals:
+#   - Constructor must accept (first_name, last_name, emp_id, phone, start_year, projects: List[Project])
+#   - Validate that projects list is non-empty
+#   - calculate_compensation(registry): return equal share of 3% of registry.total_revenue across all GMs
+#   - __str__() should include role tag, name/ID, and project names joined by comma
+# Constraints:
+#   - Use registry.gm_count defensively (treat 0 as 1 to avoid ZeroDivisionError)
+# ===========================================================================================
 class GeneralManager(Employee):
-    # GeneralManager has >= 1 projects; compensation is an equal share of 3% of TOTAL company project revenue.
-    # DATA: inherits Employee fields; adds projects: List[Project]
-    # COMP RULE: total_comp = (0.03 * sum(all unique project revenue)) / number_of_GMs
+    """General Manager: ≥1 project; equal share of a 3% revenue pool across all GMs."""
     def __init__(self, first_name: str, last_name: str, emp_id: str, phone: str, start_year: int,
                  projects: List[Project]) -> None:
         super().__init__(first_name, last_name, emp_id, phone, start_year)
@@ -156,11 +195,13 @@ class GeneralManager(Employee):
 
     @property
     def projects(self) -> List[Project]:
+        """Defensive copy of associated projects."""
         return list(self._projects)
 
     def calculate_compensation(self, registry: ProjectRegistry) -> float:
+        """GM pay = (0.03 * total unique project revenue) / number_of_GMs."""
         pool = 0.03 * registry.total_revenue
-        n = max(1, registry.gm_count)  # defensive split to avoid ZeroDivision if caller forgets to register GM
+        n = max(1, registry.gm_count)
         return pool / n
 
     def __str__(self) -> str:
@@ -168,10 +209,17 @@ class GeneralManager(Employee):
         return f"[GM] {self.first_name} {self.last_name} (ID {self.emp_id}) | Projects: {pnames}"
 
 
+# ===========================================================================================
+# Prompt to Copilot: Implement ProjectManager subclass
+# Goals:
+#   - Constructor must accept (first_name, last_name, emp_id, phone, start_year, project: Project)
+#   - calculate_compensation(registry): return 5% of that single project's revenue
+#   - __str__() should include role tag, name/ID, and the project name
+# Constraints:
+#   - Exactly one project per PM
+# ===========================================================================================
 class ProjectManager(Employee):
-    # ProjectManager is assigned to EXACTLY one project; compensation is 5% of THAT project's revenue.
-    # DATA: inherits Employee fields; adds project: Project
-    # COMP RULE: total_comp = 0.05 * project.revenue
+    """Project Manager: exactly one project; 5% of that project's revenue."""
     def __init__(self, first_name: str, last_name: str, emp_id: str, phone: str, start_year: int,
                  project: Project) -> None:
         super().__init__(first_name, last_name, emp_id, phone, start_year)
@@ -179,19 +227,29 @@ class ProjectManager(Employee):
 
     @property
     def project(self) -> Project:
+        """The one project managed by this PM."""
         return self._project
 
     def calculate_compensation(self, registry: ProjectRegistry) -> float:
+        """PM pay = 0.05 * project.revenue."""
         return 0.05 * self._project.revenue
 
     def __str__(self) -> str:
         return f"[PM] {self.first_name} {self.last_name} (ID {self.emp_id}) | Project: {self._project.name}"
 
 
+# ===========================================================================================
+# Prompt to Copilot: Implement Programmer subclass
+# Goals:
+#   - Constructor must accept (first_name, last_name, emp_id, phone, start_year, base_salary: float, project: Project)
+#   - Validate base_salary >= 0 using a property setter
+#   - calculate_compensation(registry): base_salary + 1% of that project's revenue
+#   - __str__() shows role tag, name/ID, base salary, and project name
+# Constraints:
+#   - Exactly one project per Programmer
+# ===========================================================================================
 class Programmer(Employee):
-    # Programmer is assigned to EXACTLY one project; compensation is base_salary + 1% of that project’s revenue.
-    # DATA: inherits Employee fields; adds base_salary: float, project: Project
-    # COMP RULE: total_comp = base_salary + 0.01 * project.revenue
+    """Programmer: one project; base salary + 1% of that project's revenue."""
     def __init__(self, first_name: str, last_name: str, emp_id: str, phone: str, start_year: int,
                  base_salary: float, project: Project) -> None:
         super().__init__(first_name, last_name, emp_id, phone, start_year)
@@ -200,6 +258,7 @@ class Programmer(Employee):
 
     @property
     def base_salary(self) -> float:
+        """Non-negative base salary with validation."""
         return self._base_salary
 
     @base_salary.setter
@@ -211,9 +270,11 @@ class Programmer(Employee):
 
     @property
     def project(self) -> Project:
+        """The one project assigned to this programmer."""
         return self._project
 
     def calculate_compensation(self, registry: ProjectRegistry) -> float:
+        """Programmer pay = base_salary + 0.01 * project.revenue."""
         return self._base_salary + 0.01 * self._project.revenue
 
     def __str__(self) -> str:
@@ -221,10 +282,18 @@ class Programmer(Employee):
                 f"Base ${self._base_salary:,.2f} | Project: {self._project.name}")
 
 
+# ===========================================================================================
+# Prompt to Copilot: Implement Staff subclass
+# Goals:
+#   - Constructor must accept (first_name, last_name, emp_id, phone, start_year, base_salary: float)
+#   - Validate base_salary >= 0 using a property setter
+#   - calculate_compensation(registry): base_salary + (100 * years_of_service)
+#   - __str__() shows role tag, name/ID, and base salary
+# Constraints:
+#   - No project association for Staff
+# ===========================================================================================
 class Staff(Employee):
-    # Staff has no project; compensation is base_salary + $100 for each year of service.
-    # DATA: inherits Employee fields; adds base_salary: float
-    # COMP RULE: total_comp = base_salary + (100 * years_of_service)
+    """Staff: no project; base salary + $100 per year of service."""
     def __init__(self, first_name: str, last_name: str, emp_id: str, phone: str, start_year: int,
                  base_salary: float) -> None:
         super().__init__(first_name, last_name, emp_id, phone, start_year)
@@ -232,6 +301,7 @@ class Staff(Employee):
 
     @property
     def base_salary(self) -> float:
+        """Non-negative base salary with validation."""
         return self._base_salary
 
     @base_salary.setter
@@ -242,6 +312,7 @@ class Staff(Employee):
         self._base_salary = v
 
     def calculate_compensation(self, registry: ProjectRegistry) -> float:
+        """Staff pay = base_salary + (100 * years_of_service)."""
         return self._base_salary + (100.0 * self.years_of_service)
 
     def __str__(self) -> str:
