@@ -1,0 +1,8 @@
+role,id,fname,lname,department,phNumber,team_size
+Employee,345678,Krishna,Shah,ENG,8123403132,
+Employee,E180,Krishna,Shah,FIN,8123403132,
+Employee,E145,Krishna,Shah,FIN,8123403132,
+Employee,E345,Krishna,Shah,FIN,8123403132,
+Employee,E340,Krishna,Shah,ENG,8123403132,
+Employee,E456,Krishna,Shah,ENG,8123403132,
+Employee,E450,Jake,Choi,ENG,8123403132,

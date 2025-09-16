@@ -12,11 +12,12 @@
 # Staff: first_name, last_name, emp_id, phone, base_salary, start_year.
 # We have to put only the truly universal attributes + logic in the superclass, and push everything else down.
 # Since first_name, last_name, emp_id, phone, start_year are common to all employees, they will be in the Employee superclass.
-# ASSUMPTIONS:
-# - All General Managers share 3% of total revenue across ALL unique projects; the pool is split equally among all GMs.
-# - Projects are uniquely identified by normalized project name (lowercased, stripped). "First write wins" for revenue.
-# - No mutable module-level globals: ProjectRegistry is the system’s single source of truth for projects + GM count.
-# - Printing of total compensation is supported via Employee.compensation_summary(), but each subclass owns its calc logic.
+# Assumptions I am making to keep this prototype consistent with the assignment: projects are unique by name after lowercasing
+# and trimming; the first time we see a project name, the revenue we set for it becomes the single source of truth; any later
+# attempt to “recreate” the same project just reuses the existing one. Also, General Managers share 3% of the total revenue
+# across all unique projects and that pool is split equally across all GMs that have been registered with the registry. No
+# module-level global mutable state; everything that needs to be shared system-wide (projects, GM count) sits inside a
+# ProjectRegistry instance so that tests and demos are deterministic.
 
 from __future__ import annotations
 from typing import Dict, List, Optional
@@ -27,19 +28,13 @@ from datetime import date
 CURRENT_YEAR = date.today().year
 
 
-# ===========================================================================================
-# Prompt to Copilot: Create a lightweight Project value-object with validation
-# Goals:
-#   - Define a frozen dataclass Project(name: str, revenue: float)
-#   - Validate that name is non-empty and revenue is non-negative in __post_init__
-#   - Implement __str__ to show a friendly representation "Project(name=..., revenue=...)".
-# Constraints:
-#   - Use @dataclass(frozen=True) so instances are immutable
-#   - Keep logic minimal; heavy aggregates belong to ProjectRegistry
-# ===========================================================================================
+# This class is the tiny “value object” for a project. It’s intentionally small and immutable so we don’t end up with
+# drifting state. The only two things we care about at this level are the project’s human-readable name and its revenue.
+# Validation is straightforward: the name must exist (not blank/whitespace) and revenue cannot be negative. We keep __str__
+# friendly because we’ll probably log or print these in the test driver. Any bigger aggregates (like total revenue) are not
+# this class’s job; those live in the registry below.
 @dataclass(frozen=True)
 class Project:
-    """Value object representing a unique project and its revenue."""
     name: str
     revenue: float
 
@@ -53,19 +48,14 @@ class Project:
         return f"Project(name={self.name}, revenue={self.revenue:,.2f})"
 
 
-# ===========================================================================================
-# Prompt to Copilot: Build ProjectRegistry to deduplicate projects and track GMs
-# Goals:
-#   - Maintain a dict of unique Project objects keyed by normalized name
-#   - Expose upsert_project(name, revenue) with first-write-wins policy
-#   - Provide get_project(name), total_revenue (sum of all unique), gm_count
-#   - Track registered General Managers via register_gm(gm)
-# Constraints:
-#   - Normalize names via helper _key(name) -> lower/strip
-#   - No global mutable state; this object is the single source of truth
-# ===========================================================================================
+# This registry exists so we have one canonical place that knows “what projects exist” and “who the general managers are”.
+# The assignment’s compensation rules depend on the sum of revenue across ALL UNIQUE projects, so we must deduplicate by a
+# normalized key. I’m normalizing by lowercasing and stripping the project name. I’m also capturing every GM that gets
+# created so we can split the 3% pool equally. The policy I’m going with is “first write wins” for project revenue: the
+# first time a project is upserted, that revenue sticks; subsequent upserts with the same normalized name will return the
+# already-existing Project object and ignore the new revenue (if you want “latest write wins” it’s a one-line change, but
+# I’m documenting the current choice so the behavior is predictable).
 class ProjectRegistry:
-    """Central registry for unique projects and GM tracking."""
     def __init__(self) -> None:
         self._projects: Dict[str, Project] = {}
         self._general_managers: List["GeneralManager"] = []
@@ -75,10 +65,8 @@ class ProjectRegistry:
         return name.strip().lower()
 
     def upsert_project(self, name: str, revenue: float) -> Project:
-        """
-        Insert-or-return an existing project by normalized name.
-        First-write-wins for revenue (documented assumption).
-        """
+        # Insert-or-return behavior. If we’ve already seen this normalized name, we just return the existing Project so we
+        # don’t accidentally double-count revenue. Otherwise, we create a new immutable Project and store it.
         k = self._key(name)
         if k in self._projects:
             return self._projects[k]
@@ -87,39 +75,33 @@ class ProjectRegistry:
         return proj
 
     def get_project(self, name: str) -> Optional[Project]:
-        """Return project by case-insensitive name, or None if absent."""
+        # Convenience for drivers: fetch by name without worrying about case or leading/trailing spaces.
         return self._projects.get(self._key(name))
 
     def register_gm(self, gm: "GeneralManager") -> None:
-        """Record GM for pool-splitting logic."""
+        # The GM list is purely for counting (so we can split the 3% pool fairly). We also defend against duplicates.
         if gm not in self._general_managers:
             self._general_managers.append(gm)
 
     @property
     def total_revenue(self) -> float:
-        """Aggregate revenue across all unique projects."""
+        # Sum across the unique projects in the catalog. Because Project is frozen, this is stable during a run.
         return sum(p.revenue for p in self._projects.values())
 
     @property
     def gm_count(self) -> int:
-        """Number of registered General Managers."""
+        # Simple count for splitting the pool. If nobody registered, the GM code will defensively treat it as 1.
         return len(self._general_managers)
 
 
-# ===========================================================================================
-# Prompt to Copilot: Create the Parent Employee Class
-# Based on the comments I provided, create the Employee parent class. It should:
-#   - Import the datetime module at the top of the file (already done) and define CURRENT_YEAR.
-#   - The __init__ method should accept first_name, last_name, emp_id, phone, and start_year.
-#   - Normalize phone to digits only; validate names/ID are non-empty and start_year <= CURRENT_YEAR.
-#   - Include a placeholder/abstract method calculate_compensation(registry) that child classes must implement.
-#   - Include a placeholder/abstract __str__() method.
-#   - Provide a years_of_service property and a helper compensation_summary(registry) that formats output.
-# Constraints:
-#   - Use ABC and @abstractmethod to enforce subclass overrides.
-# ===========================================================================================
+# The Employee superclass carries only the fields and behaviors that truly every employee shares: first name, last name,
+# employee id, phone (stored in digits-only form to avoid formatting problems), and start year. It also owns simple shared
+# utilities: normalizing phone numbers and computing years of service relative to CURRENT_YEAR. We do not put base salary or
+# project references here because not all employees have those. This class is abstract because each subtype is required to
+# implement its own compensation logic and its own string representation. Keeping the API uniform lets us throw instances
+# of any subclass into a single list and still iterate and call the same methods (polymorphism). The little helper
+# compensation_summary is there simply so you can print a consistent report line without repeating formatting everywhere.
 class Employee(ABC):
-    """Superclass capturing universal identity/tenure logic and the polymorphic API."""
     def __init__(self, first_name: str, last_name: str, emp_id: str, phone: str, start_year: int) -> None:
         self.first_name = first_name.strip()
         self.last_name = last_name.strip()
@@ -138,7 +120,7 @@ class Employee(ABC):
 
     @property
     def phone(self) -> str:
-        """Digits-only phone; presentation formatting is an output concern."""
+        # We store phones as digits only. If you need (xxx) formatting, do it at the output boundary.
         return self._phone
 
     @phone.setter
@@ -147,45 +129,37 @@ class Employee(ABC):
 
     @staticmethod
     def _normalize_phone(v: str) -> str:
-        """Strip non-digits to keep a canonical phone representation."""
+        # Strip everything except digits. Keeps the data layer clean and comparable.
         return "".join(ch for ch in str(v) if ch.isdigit())
 
     @property
     def years_of_service(self) -> int:
-        """Compute tenure used by Staff compensation rule."""
+        # Used by the Staff compensation rule and handy for reporting anywhere else.
         return max(0, CURRENT_YEAR - self.start_year)
 
     @abstractmethod
     def calculate_compensation(self, registry: ProjectRegistry) -> float:
-        """
-        Polymorphic contract: subclasses must compute their total compensation
-        using the shared registry where relevant.
-        """
+        # Every subclass has a different rule, so the base class just defines the contract.
+        # The registry gives access to the “system” state (unique projects, total revenue, GM count).
         ...
 
     @abstractmethod
     def __str__(self) -> str:
-        """Polymorphic display for reports."""
+        # Give each subclass control of how it should appear in a report or log line.
         ...
 
     def compensation_summary(self, registry: ProjectRegistry) -> str:
-        """Uniform printable string for compensation reports."""
+        # A friendly, uniform one-liner for reports that depends on the subclass calculation.
         total = self.calculate_compensation(registry)
         return f"{self} | Total Compensation: ${total:,.2f}"
 
 
-# ===========================================================================================
-# Prompt to Copilot: Implement GeneralManager subclass
-# Goals:
-#   - Constructor must accept (first_name, last_name, emp_id, phone, start_year, projects: List[Project])
-#   - Validate that projects list is non-empty
-#   - calculate_compensation(registry): return equal share of 3% of registry.total_revenue across all GMs
-#   - __str__() should include role tag, name/ID, and project names joined by comma
-# Constraints:
-#   - Use registry.gm_count defensively (treat 0 as 1 to avoid ZeroDivisionError)
-# ===========================================================================================
+# A General Manager is associated with one or more projects (list). Per the assignment, their pay is not tied to any single
+# project but to the entire portfolio: all General Managers share a pool equal to 3% of the total revenue across all unique
+# projects in the system. That pool is split equally among GMs. We rely on the ProjectRegistry to provide both the total
+# revenue and the count of registered GMs. If a driver forgets to register a GM, we still guard against division by zero
+# (treat it as one) so the demo code won’t blow up; that said, registering GMs is expected usage.
 class GeneralManager(Employee):
-    """General Manager: ≥1 project; equal share of a 3% revenue pool across all GMs."""
     def __init__(self, first_name: str, last_name: str, emp_id: str, phone: str, start_year: int,
                  projects: List[Project]) -> None:
         super().__init__(first_name, last_name, emp_id, phone, start_year)
@@ -195,11 +169,10 @@ class GeneralManager(Employee):
 
     @property
     def projects(self) -> List[Project]:
-        """Defensive copy of associated projects."""
+        # Defensive copy because callers shouldn’t be able to mutate our internal list.
         return list(self._projects)
 
     def calculate_compensation(self, registry: ProjectRegistry) -> float:
-        """GM pay = (0.03 * total unique project revenue) / number_of_GMs."""
         pool = 0.03 * registry.total_revenue
         n = max(1, registry.gm_count)
         return pool / n
@@ -209,17 +182,11 @@ class GeneralManager(Employee):
         return f"[GM] {self.first_name} {self.last_name} (ID {self.emp_id}) | Projects: {pnames}"
 
 
-# ===========================================================================================
-# Prompt to Copilot: Implement ProjectManager subclass
-# Goals:
-#   - Constructor must accept (first_name, last_name, emp_id, phone, start_year, project: Project)
-#   - calculate_compensation(registry): return 5% of that single project's revenue
-#   - __str__() should include role tag, name/ID, and the project name
-# Constraints:
-#   - Exactly one project per PM
-# ===========================================================================================
+# A Project Manager is tied to exactly one project. Their compensation is 5% of that project’s revenue. The registry is not
+# strictly necessary for this math since we read from the one project object we already hold, but we keep the same signature
+# to maintain a consistent API across all subclasses. The driver code becomes trivial when every employee exposes the same
+# method and return type.
 class ProjectManager(Employee):
-    """Project Manager: exactly one project; 5% of that project's revenue."""
     def __init__(self, first_name: str, last_name: str, emp_id: str, phone: str, start_year: int,
                  project: Project) -> None:
         super().__init__(first_name, last_name, emp_id, phone, start_year)
@@ -227,38 +194,28 @@ class ProjectManager(Employee):
 
     @property
     def project(self) -> Project:
-        """The one project managed by this PM."""
         return self._project
 
     def calculate_compensation(self, registry: ProjectRegistry) -> float:
-        """PM pay = 0.05 * project.revenue."""
         return 0.05 * self._project.revenue
 
     def __str__(self) -> str:
         return f"[PM] {self.first_name} {self.last_name} (ID {self.emp_id}) | Project: {self._project.name}"
 
 
-# ===========================================================================================
-# Prompt to Copilot: Implement Programmer subclass
-# Goals:
-#   - Constructor must accept (first_name, last_name, emp_id, phone, start_year, base_salary: float, project: Project)
-#   - Validate base_salary >= 0 using a property setter
-#   - calculate_compensation(registry): base_salary + 1% of that project's revenue
-#   - __str__() shows role tag, name/ID, base salary, and project name
-# Constraints:
-#   - Exactly one project per Programmer
-# ===========================================================================================
+# A Programmer is also tied to exactly one project, but unlike the PM, there is a base salary involved. The rule is:
+# base_salary + 1% of that project’s revenue. Base salary is guarded through a property so we can enforce non-negative
+# values at the boundary. Again, we keep the same method signature for polymorphism even though the registry is not needed
+# for the math here.
 class Programmer(Employee):
-    """Programmer: one project; base salary + 1% of that project's revenue."""
     def __init__(self, first_name: str, last_name: str, emp_id: str, phone: str, start_year: int,
                  base_salary: float, project: Project) -> None:
         super().__init__(first_name, last_name, emp_id, phone, start_year)
-        self.base_salary = float(base_salary)  # use property for validation
+        self.base_salary = float(base_salary)  # route through property for validation
         self._project = project
 
     @property
     def base_salary(self) -> float:
-        """Non-negative base salary with validation."""
         return self._base_salary
 
     @base_salary.setter
@@ -270,11 +227,9 @@ class Programmer(Employee):
 
     @property
     def project(self) -> Project:
-        """The one project assigned to this programmer."""
         return self._project
 
     def calculate_compensation(self, registry: ProjectRegistry) -> float:
-        """Programmer pay = base_salary + 0.01 * project.revenue."""
         return self._base_salary + 0.01 * self._project.revenue
 
     def __str__(self) -> str:
@@ -282,26 +237,17 @@ class Programmer(Employee):
                 f"Base ${self._base_salary:,.2f} | Project: {self._project.name}")
 
 
-# ===========================================================================================
-# Prompt to Copilot: Implement Staff subclass
-# Goals:
-#   - Constructor must accept (first_name, last_name, emp_id, phone, start_year, base_salary: float)
-#   - Validate base_salary >= 0 using a property setter
-#   - calculate_compensation(registry): base_salary + (100 * years_of_service)
-#   - __str__() shows role tag, name/ID, and base salary
-# Constraints:
-#   - No project association for Staff
-# ===========================================================================================
+# Staff are the simplest case: there is no project association at all. Their compensation is their base salary plus a small
+# tenure kicker: $100 for every year of service (computed from CURRENT_YEAR − start_year, never negative). We validate base
+# salary the same way we did for Programmer so bad inputs get caught early.
 class Staff(Employee):
-    """Staff: no project; base salary + $100 per year of service."""
     def __init__(self, first_name: str, last_name: str, emp_id: str, phone: str, start_year: int,
                  base_salary: float) -> None:
         super().__init__(first_name, last_name, emp_id, phone, start_year)
-        self.base_salary = float(base_salary)  # use property for validation
+        self.base_salary = float(base_salary)
 
     @property
     def base_salary(self) -> float:
-        """Non-negative base salary with validation."""
         return self._base_salary
 
     @base_salary.setter
@@ -312,7 +258,6 @@ class Staff(Employee):
         self._base_salary = v
 
     def calculate_compensation(self, registry: ProjectRegistry) -> float:
-        """Staff pay = base_salary + (100 * years_of_service)."""
         return self._base_salary + (100.0 * self.years_of_service)
 
     def __str__(self) -> str:
