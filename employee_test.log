@@ -1,0 +1,54 @@
+2025-09-18 09:29:46,632 INFO === employee.py self-test started ===
+2025-09-18 09:29:46,633 INFO Created valid employee: [Employee] E001 | Aneesh Kumar | Dept ENG | Phone 3175551212
+2025-09-18 09:29:46,633 INFO Created valid manager: [Manager]  M100 | Priya Sharma | Dept HRM | Phone 3175553434 | Team Size 6
+2025-09-18 09:29:46,633 ERROR Expected failure creating invalid employee (E-BAD1): First name cannot contain digits.
+Traceback (most recent call last):
+  File "/Users/aneeshyaramati/Documents/GitHub/AiDD-anyarama-lab01/AiDD_Assgt_03/employee.py", line 188, in <module>
+    bad = Employee(**row)
+  File "/Users/aneeshyaramati/Documents/GitHub/AiDD-anyarama-lab01/AiDD_Assgt_03/employee.py", line 52, in __init__
+    self.fname = fname
+    ^^^^^^^^^^
+  File "/Users/aneeshyaramati/Documents/GitHub/AiDD-anyarama-lab01/AiDD_Assgt_03/employee.py", line 75, in fname
+    raise ValueError("First name cannot contain digits.")
+ValueError: First name cannot contain digits.
+2025-09-18 09:29:46,633 ERROR Expected failure creating invalid employee (E-BAD2): Last name cannot contain digits.
+Traceback (most recent call last):
+  File "/Users/aneeshyaramati/Documents/GitHub/AiDD-anyarama-lab01/AiDD_Assgt_03/employee.py", line 188, in <module>
+    bad = Employee(**row)
+  File "/Users/aneeshyaramati/Documents/GitHub/AiDD-anyarama-lab01/AiDD_Assgt_03/employee.py", line 53, in __init__
+    self.lname = lname
+    ^^^^^^^^^^
+  File "/Users/aneeshyaramati/Documents/GitHub/AiDD-anyarama-lab01/AiDD_Assgt_03/employee.py", line 89, in lname
+    raise ValueError("Last name cannot contain digits.")
+ValueError: Last name cannot contain digits.
+2025-09-18 09:29:46,633 ERROR Expected failure creating invalid employee (E-BAD3): Department must be exactly 3 uppercase letters (e.g., 'HRM').
+Traceback (most recent call last):
+  File "/Users/aneeshyaramati/Documents/GitHub/AiDD-anyarama-lab01/AiDD_Assgt_03/employee.py", line 188, in <module>
+    bad = Employee(**row)
+  File "/Users/aneeshyaramati/Documents/GitHub/AiDD-anyarama-lab01/AiDD_Assgt_03/employee.py", line 54, in __init__
+    self.department = department
+    ^^^^^^^^^^^^^^^
+  File "/Users/aneeshyaramati/Documents/GitHub/AiDD-anyarama-lab01/AiDD_Assgt_03/employee.py", line 101, in department
+    raise ValueError("Department must be exactly 3 uppercase letters (e.g., 'HRM').")
+ValueError: Department must be exactly 3 uppercase letters (e.g., 'HRM').
+2025-09-18 09:29:46,633 ERROR Expected failure creating invalid employee (E-BAD4): Department must be exactly 3 uppercase letters (e.g., 'HRM').
+Traceback (most recent call last):
+  File "/Users/aneeshyaramati/Documents/GitHub/AiDD-anyarama-lab01/AiDD_Assgt_03/employee.py", line 188, in <module>
+    bad = Employee(**row)
+  File "/Users/aneeshyaramati/Documents/GitHub/AiDD-anyarama-lab01/AiDD_Assgt_03/employee.py", line 54, in __init__
+    self.department = department
+    ^^^^^^^^^^^^^^^
+  File "/Users/aneeshyaramati/Documents/GitHub/AiDD-anyarama-lab01/AiDD_Assgt_03/employee.py", line 101, in department
+    raise ValueError("Department must be exactly 3 uppercase letters (e.g., 'HRM').")
+ValueError: Department must be exactly 3 uppercase letters (e.g., 'HRM').
+2025-09-18 09:29:46,633 ERROR Expected failure creating invalid employee (E-BAD5): Phone number must have exactly 10 digits after sanitization.
+Traceback (most recent call last):
+  File "/Users/aneeshyaramati/Documents/GitHub/AiDD-anyarama-lab01/AiDD_Assgt_03/employee.py", line 188, in <module>
+    bad = Employee(**row)
+  File "/Users/aneeshyaramati/Documents/GitHub/AiDD-anyarama-lab01/AiDD_Assgt_03/employee.py", line 55, in __init__
+    self.phNumber = phNumber
+    ^^^^^^^^^^^^^
+  File "/Users/aneeshyaramati/Documents/GitHub/AiDD-anyarama-lab01/AiDD_Assgt_03/employee.py", line 114, in phNumber
+    raise ValueError("Phone number must have exactly 10 digits after sanitization.")
+ValueError: Phone number must have exactly 10 digits after sanitization.
+2025-09-18 09:29:46,633 INFO === employee.py self-test finished ===
