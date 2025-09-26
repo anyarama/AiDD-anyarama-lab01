@@ -1,0 +1,11 @@
+{
+  "name": "sqlite-mcp-server",
+  "description": "SQLite access to employees.db",
+  "entrypoint": {
+    "command": "python",
+    "args": [
+      "sqlite_server.py"
+    ],
+    "cwd": "."
+  }
+}
