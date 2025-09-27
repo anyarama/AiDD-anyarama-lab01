@@ -9,6 +9,10 @@ const submitButton = form.querySelector("button[type='submit']");
 const employeeCountEl = document.getElementById("employee-count");
 const departmentCountEl = document.getElementById("department-count");
 const avgSalaryEl = document.getElementById("avg-salary");
+const departmentForm = document.getElementById("department-form");
+const departmentInput = document.getElementById("new-department");
+const departmentList = document.getElementById("department-list");
+const departmentMessageEl = document.getElementById("department-message");
 
 const API_BASE = ""; // same origin
 
@@ -55,7 +59,7 @@ async function loadDepartments() {
   try {
     const departments = await fetchJSON("/api/departments");
     cachedDepartments = departments;
-    departmentSelect.innerHTML = '<option value="">-- Select department --</option>';
+    departmentSelect.innerHTML = '<option value="">Select department</option>';
     departments.forEach(({ id, name }) => {
       const option = document.createElement("option");
       option.value = id;
@@ -65,8 +69,14 @@ async function loadDepartments() {
     if (departmentCountEl) {
       departmentCountEl.textContent = departments.length;
     }
+    renderDepartments(departments);
   } catch (error) {
     console.error("Failed to load departments", error);
+    cachedDepartments = [];
+    if (departmentCountEl) {
+      departmentCountEl.textContent = "0";
+    }
+    renderDepartments([]);
   }
 }
 
@@ -103,6 +113,38 @@ function renderEmployees(employees) {
       employee.hire_date
     );
     employeesBody.appendChild(fragment);
+  });
+}
+
+function renderDepartments(departments) {
+  if (!departmentList) return;
+  departmentList.innerHTML = "";
+
+  if (!Array.isArray(departments) || departments.length === 0) {
+    const emptyItem = document.createElement("li");
+    emptyItem.className = "department-item empty";
+    emptyItem.textContent = "No departments defined yet.";
+    departmentList.appendChild(emptyItem);
+    return;
+  }
+
+  departments.forEach((department) => {
+    const item = document.createElement("li");
+    item.className = "department-item";
+    item.dataset.id = department.id;
+
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "department-name";
+    nameSpan.textContent = department.name;
+
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.className = "chip-button danger";
+    deleteButton.textContent = "Remove";
+
+    item.appendChild(nameSpan);
+    item.appendChild(deleteButton);
+    departmentList.appendChild(item);
   });
 }
 
@@ -157,6 +199,12 @@ async function loadEmployees() {
 function setFormMessage(text, type = "") {
   messageEl.textContent = text;
   messageEl.className = type ? type : "";
+}
+
+function setDepartmentMessage(text, type = "") {
+  if (!departmentMessageEl) return;
+  departmentMessageEl.textContent = text;
+  departmentMessageEl.className = type ? type : "";
 }
 
 function resetForm() {
@@ -274,6 +322,66 @@ cancelEditButton.addEventListener("click", () => {
   resetForm();
   setFormMessage("Edit cancelled.", "info");
 });
+
+if (departmentForm) {
+  departmentForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!departmentInput) return;
+
+    const name = departmentInput.value.trim();
+    if (!name) {
+      setDepartmentMessage("Please enter a department name.", "error");
+      return;
+    }
+
+    try {
+      departmentForm.querySelector("button[type='submit']").disabled = true;
+      await fetchJSON("/api/departments", {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      });
+      departmentInput.value = "";
+      setDepartmentMessage("Department added.", "success");
+      await loadDepartments();
+    } catch (error) {
+      console.error("Add department failed", error);
+      const message = error.message.replace(/^\"|\"$/g, "");
+      setDepartmentMessage(message || "Unable to add department.", "error");
+    } finally {
+      departmentForm.querySelector("button[type='submit']").disabled = false;
+    }
+  });
+}
+
+if (departmentList) {
+  departmentList.addEventListener("click", async (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+
+    if (!target.classList.contains("chip-button")) {
+      return;
+    }
+
+    const item = target.closest("li");
+    const id = item?.dataset.id;
+    if (!id) return;
+
+    const confirmed = window.confirm("Remove this department?");
+    if (!confirmed) return;
+
+    try {
+      target.disabled = true;
+      await fetchJSON(`/api/departments/${id}`, { method: "DELETE" });
+      setDepartmentMessage("Department removed.", "success");
+      await loadDepartments();
+    } catch (error) {
+      console.error("Delete department failed", error);
+      const message = error.message.replace(/^\"|\"$/g, "");
+      setDepartmentMessage(message || "Unable to remove department.", "error");
+      target.disabled = false;
+    }
+  });
+}
 
 (async function init() {
   await loadDepartments();

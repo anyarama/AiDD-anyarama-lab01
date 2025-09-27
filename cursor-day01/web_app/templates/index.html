@@ -12,69 +12,91 @@
       <header class="hero">
         <div class="hero__text">
           <p class="eyebrow">People Operations</p>
-          <h1>Employee Experience Hub</h1>
-          <p class="lead">
-            Keep your roster up to date, refresh team insights, and manage new
-            joiners in a single polished interface backed by the shared SQLite
-            database.
-          </p>
-        </div>
-        <div class="hero__stats">
-          <article class="stat">
-            <p class="stat__label">Total Employees</p>
-            <p class="stat__value" id="employee-count">0</p>
-          </article>
-          <article class="stat">
-            <p class="stat__label">Active Departments</p>
-            <p class="stat__value" id="department-count">0</p>
-          </article>
-          <article class="stat">
-            <p class="stat__label">Average Salary</p>
-            <p class="stat__value" id="avg-salary">—</p>
-          </article>
+          <h1>Employee Hub</h1>
+          <p class="lead">A tidy workspace for keeping your team information current.</p>
         </div>
       </header>
 
+      <section class="insights" aria-label="Employee metrics">
+        <article class="insight">
+          <p class="insight__label">Team Size</p>
+          <p class="insight__value" id="employee-count">0</p>
+        </article>
+        <article class="insight">
+          <p class="insight__label">Departments</p>
+          <p class="insight__value" id="department-count">0</p>
+        </article>
+        <article class="insight">
+          <p class="insight__label">Average Salary</p>
+          <p class="insight__value" id="avg-salary">—</p>
+        </article>
+      </section>
+
       <main class="content-grid">
-        <section class="panel form-panel">
-          <div class="panel__header">
-            <div>
-              <p class="panel__eyebrow">Create or Update</p>
-              <h2 class="panel__title">Employee Details</h2>
-            </div>
-            <span class="panel__hint">Fields marked * are required</span>
-          </div>
-          <form id="employee-form" class="form">
-            <div class="field">
-              <label for="name">Full Name<span class="required">*</span></label>
-              <input type="text" id="name" name="name" placeholder="Jane Doe" required />
-            </div>
-
-            <div class="field">
-              <label for="department">Department</label>
-              <select id="department" name="department">
-                <option value="">Select department</option>
-              </select>
-            </div>
-
-            <div class="field-grid">
+        <div class="column-stack">
+          <section class="panel form-panel">
+            <div class="panel__header">
               <div>
-                <label for="salary">Salary</label>
-                <input type="number" step="0.01" id="salary" name="salary" placeholder="70000" />
+                <p class="panel__eyebrow">Create or Update</p>
+                <h2 class="panel__title">Employee Details</h2>
               </div>
-              <div>
-                <label for="hire-date">Hire Date</label>
-                <input type="date" id="hire-date" name="hire-date" />
-              </div>
+              <span class="panel__hint">Fields marked * are required</span>
             </div>
+            <form id="employee-form" class="form">
+              <div class="field">
+                <label for="name">Full Name<span class="required">*</span></label>
+                <input type="text" id="name" name="name" placeholder="Jane Doe" required />
+              </div>
 
-            <div class="form__actions">
-              <button type="submit" class="primary">Add Employee</button>
-              <button type="button" id="cancel-edit" class="secondary" hidden>Cancel</button>
+              <div class="field">
+                <label for="department">Department</label>
+                <select id="department" name="department">
+                  <option value="">Select department</option>
+                </select>
+              </div>
+
+              <div class="field-grid">
+                <div>
+                  <label for="salary">Salary</label>
+                  <input type="number" step="0.01" id="salary" name="salary" placeholder="70000" />
+                </div>
+                <div>
+                  <label for="hire-date">Hire Date</label>
+                  <input type="date" id="hire-date" name="hire-date" />
+                </div>
+              </div>
+
+              <div class="form__actions">
+                <button type="submit" class="primary">Add Employee</button>
+                <button type="button" id="cancel-edit" class="secondary" hidden>Cancel</button>
+              </div>
+              <p id="form-message" role="status"></p>
+            </form>
+          </section>
+
+          <section class="panel departments-panel">
+            <div class="panel__header">
+              <div>
+                <p class="panel__eyebrow">Structure</p>
+                <h2 class="panel__title">Departments</h2>
+              </div>
             </div>
-            <p id="form-message" role="status"></p>
-          </form>
-        </section>
+            <form id="department-form" class="department-form">
+              <label for="new-department" class="visually-hidden">Department name</label>
+              <input
+                type="text"
+                id="new-department"
+                name="new-department"
+                placeholder="Add new department"
+                autocomplete="off"
+                required
+              />
+              <button type="submit" class="primary subtle">Add</button>
+            </form>
+            <p id="department-message" role="status"></p>
+            <ul id="department-list" class="department-list"></ul>
+          </section>
+        </div>
 
         <section class="panel table-panel">
           <div class="panel__header">
@@ -86,6 +108,14 @@
           </div>
           <div class="table-wrapper">
             <table id="employees-table">
+              <colgroup>
+                <col class="col-width-id" />
+                <col class="col-width-name" />
+                <col class="col-width-dept" />
+                <col class="col-width-salary" />
+                <col class="col-width-hire" />
+                <col class="col-width-actions" />
+              </colgroup>
               <thead>
                 <tr>
                   <th>ID</th>
@@ -109,12 +139,12 @@
 
     <template id="employee-row">
       <tr>
-        <td class="col-id"></td>
-        <td class="col-name"></td>
-        <td class="col-department"></td>
-        <td class="col-salary"></td>
-        <td class="col-hire-date"></td>
-        <td class="col-actions">
+        <td class="col-id" data-label="ID"></td>
+        <td class="col-name" data-label="Name"></td>
+        <td class="col-department" data-label="Department"></td>
+        <td class="col-salary" data-label="Salary"></td>
+        <td class="col-hire-date" data-label="Hire Date"></td>
+        <td class="col-actions" data-label="Actions">
           <button class="edit-btn">Edit</button>
           <button class="delete-btn">Delete</button>
         </td>

@@ -7,12 +7,12 @@ the same database file used by the MCP server.
 
 ## Features
 
-- REST API endpoints for listing departments/employees, creating employees,
-  updating them, and deleting records.
+- REST API endpoints for listing and managing departments, as well as creating
+  employees, updating them, and deleting records.
 - Single-page front-end (HTML/CSS/JavaScript) that consumes the API with a
   polished, responsive design.
-- Client-side enhancements like currency/date formatting and inline form
-  validation feedback.
+- Client-side enhancements like live department management, currency/date
+  formatting, and inline form validation feedback.
 
 ## Requirements
 
@@ -36,6 +36,8 @@ browser to manage employees.
 ## API outline
 
 - `GET /api/departments` → list of departments (`id`, `name`).
+- `POST /api/departments` → create a department (`name` required).
+- `DELETE /api/departments/<id>` → remove a department (must have no employees).
 - `GET /api/employees` → employees with department name, salary, hire date.
 - `POST /api/employees` → create employee. JSON body supports `name` (required),
   `department_id`, `salary`, `hire_date`.

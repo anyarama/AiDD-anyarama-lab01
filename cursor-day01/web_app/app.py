@@ -68,6 +68,14 @@ def _normalize_employee_payload(
     return normalized
 
 
+def _normalize_department_payload(payload: Dict[str, Any]) -> str:
+    """Validate and normalize a department create/update payload."""
+    name = payload.get("name") if isinstance(payload, dict) else None
+    if not isinstance(name, str) or not name.strip():
+        abort(400, "`name` is required and must be a non-empty string.")
+    return name.strip()
+
+
 @app.route("/")
 def index() -> str:
     """Serve the main HTML page."""
@@ -82,6 +90,56 @@ def list_departments():
             "SELECT id, name FROM departments ORDER BY name COLLATE NOCASE"
         ).fetchall()
     return jsonify([dict(row) for row in rows])
+
+
+@app.post("/api/departments")
+def create_department():
+    """Create a new department and return it."""
+    payload: Dict[str, Any] = request.get_json(force=True, silent=True) or {}
+    name = _normalize_department_payload(payload)
+
+    with _get_connection() as conn:
+        existing = conn.execute(
+            "SELECT id FROM departments WHERE lower(name) = lower(?)",
+            (name,),
+        ).fetchone()
+        if existing:
+            abort(409, "A department with that name already exists.")
+
+        cursor = conn.execute(
+            "INSERT INTO departments (name) VALUES (?)",
+            (name,),
+        )
+        department_id = cursor.lastrowid
+        conn.commit()
+        row = conn.execute(
+            "SELECT id, name FROM departments WHERE id = ?",
+            (department_id,),
+        ).fetchone()
+
+    return jsonify(dict(row)), 201
+
+
+@app.delete("/api/departments/<int:department_id>")
+def delete_department(department_id: int):
+    """Delete a department if no employees reference it."""
+    with _get_connection() as conn:
+        in_use = conn.execute(
+            "SELECT COUNT(*) as count FROM employees WHERE department_id = ?",
+            (department_id,),
+        ).fetchone()
+        if in_use and in_use["count"]:
+            abort(400, "Cannot delete a department that still has employees.")
+
+        cursor = conn.execute(
+            "DELETE FROM departments WHERE id = ?",
+            (department_id,),
+        )
+        conn.commit()
+        if cursor.rowcount == 0:
+            abort(404, f"Department {department_id} not found.")
+
+    return ("", 204)
 
 
 @app.get("/api/employees")
