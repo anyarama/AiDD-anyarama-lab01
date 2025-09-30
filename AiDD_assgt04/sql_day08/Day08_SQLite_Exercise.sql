@@ -2,6 +2,11 @@
 -- Company DB DDL + DML + Query Ops
 -- Run with: sqlite3 company_db.sqlite < Day08_SQLite_Exercise.sql
 
+
+--Project: AiDD-anyarama-lab01/AiDD_assgt04
+--By: Aneesh Yaramati, Shamik Dutta Majumdar
+
+
 PRAGMA foreign_keys = ON;
 
 -- 1) Create schema
